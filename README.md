@@ -1,8 +1,14 @@
 # wigglebuddy
 
+<img width="350" height="269" alt="Screenshot 2026-11-22 at 2 20 51 PM" src="https://github.com/user-attachments/assets/b1f53f98-cfeb-42b3-ab30-6a8335593a48" />
+
 A desktop panda that reminds you to get up and stretch, and stretches with you.
 
-For Macs with Apple Silicon (M-series chips) running macOS 13 or later.
+For Macs with Apple Silicon running macOS 13 or later.
+
+## Tech Stack
+
+Electron app built with React, Typescript, Tailwind CSS.
 
 ## Install
 
