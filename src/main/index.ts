@@ -1,15 +1,22 @@
 import { app, ipcMain, session, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
-import { APP_NAME, BREAK_SCHEDULE_CHANNELS, SETTINGS_CHANNELS } from '../shared/constants'
+import {
+  APP_NAME,
+  BREAK_SCHEDULE_CHANNELS,
+  COMPANION_LAYOUT_CHANNELS,
+  SETTINGS_CHANNELS
+} from '../shared/constants'
 import { createBreakScheduler } from './scheduler'
 import { createSettingsStore, isValidBreakDuration, validateSettings } from './store'
 import {
   createCompanionWindow,
+  getCompanionLayout,
   getCompanionWindow,
   getSettingsWindow,
   onBreakEscape,
   openSettingsWindow,
   presentBreak,
   setCompanionVisibility,
+  setUpcomingBreakVisible,
   watchBreakDisplays
 } from './windows'
 
@@ -22,7 +29,7 @@ function assertSender(event: IpcMainInvokeEvent, window: BrowserWindow | null): 
     event.sender !== window.webContents ||
     event.senderFrame !== window.webContents.mainFrame
   ) {
-    throw new Error('Untrusted settings request.')
+    throw new Error('Untrusted window request.')
   }
 }
 
@@ -44,6 +51,7 @@ app.whenReady().then(async () => {
     const key = JSON.stringify(state)
     if (key === lastState) return
     lastState = key
+    setUpcomingBreakVisible(state.breakUpcoming)
     getCompanionWindow()?.webContents.send(BREAK_SCHEDULE_CHANNELS.changed, state)
     const presentation = JSON.stringify(state.activeBreak)
     if (presentation === lastPresentation) return
@@ -64,6 +72,28 @@ app.whenReady().then(async () => {
     scheduler.tick()
     void publishSchedule().catch(console.error)
     return scheduler.getState()
+  })
+  ipcMain.handle(COMPANION_LAYOUT_CHANNELS.read, (event) => {
+    assertSender(event, getCompanionWindow())
+    return getCompanionLayout()
+  })
+  ipcMain.handle(BREAK_SCHEDULE_CHANNELS.startUpcoming, async (event) => {
+    assertSender(event, getCompanionWindow())
+    scheduler.tick()
+    scheduler.startUpcomingBreak()
+    await publishSchedule()
+  })
+  ipcMain.handle(BREAK_SCHEDULE_CHANNELS.snooze, async (event) => {
+    assertSender(event, getCompanionWindow())
+    scheduler.tick()
+    scheduler.snoozeBreak()
+    await publishSchedule()
+  })
+  ipcMain.handle(BREAK_SCHEDULE_CHANNELS.skip, async (event) => {
+    assertSender(event, getCompanionWindow())
+    scheduler.tick()
+    scheduler.skipBreak()
+    await publishSchedule()
   })
   ipcMain.handle(SETTINGS_CHANNELS.open, (event) => {
     assertSender(event, getCompanionWindow())
@@ -107,7 +137,11 @@ app.whenReady().then(async () => {
   })
   app.on('activate', async () => {
     if (!getCompanionWindow()) await createCompanionWindow(store.store.showPet)
-    if (store.store.showPet || scheduler.getState().activeBreak) {
+    if (
+      store.store.showPet ||
+      scheduler.getState().activeBreak ||
+      scheduler.getState().breakUpcoming
+    ) {
       setCompanionVisibility(store.store.showPet)
     } else {
       await openSettingsWindow()

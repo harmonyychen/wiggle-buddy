@@ -15,7 +15,12 @@ export interface WigglebuddyAPI {
   getSettings(): Promise<AppSettings>
   saveSettings(settings: AppSettings): Promise<void>
   startBreakNow(durationSeconds: number): Promise<void>
+  startUpcomingBreak(): Promise<void>
+  snoozeBreak(): Promise<void>
+  skipBreak(): Promise<void>
   getBreakSchedule(): Promise<BreakScheduleState>
+  getCompanionLayout(): Promise<CompanionLayout>
+  onCompanionLayoutChanged(listener: (layout: CompanionLayout) => void): () => void
   onBreakScheduleChanged(listener: (schedule: BreakScheduleState) => void): () => void
   onCompanionPointerPosition(listener: (position: CompanionPointerPosition) => void): () => void
 }
@@ -28,6 +33,13 @@ export interface BreakState {
 export interface BreakScheduleState {
   nextBreakAt: number | null
   activeBreak: BreakState | null
+  breakUpcoming: boolean
+}
+
+// The original 180 px pet area stays anchored while the prompt needs extra width.
+export interface CompanionLayout {
+  offsetX: number
+  windowWidth: number
 }
 
 // Coordinates are relative to the companion window, never the desktop.

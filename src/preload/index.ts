@@ -2,12 +2,14 @@ import { contextBridge, ipcRenderer } from 'electron'
 import {
   APP_NAME,
   BREAK_SCHEDULE_CHANNELS,
+  COMPANION_LAYOUT_CHANNELS,
   COMPANION_POINTER_CHANNEL,
   SETTINGS_CHANNELS
 } from '../shared/constants'
 import type {
   AppSettings,
   BreakScheduleState,
+  CompanionLayout,
   CompanionPointerPosition,
   WigglebuddyAPI
 } from '../shared/types'
@@ -21,8 +23,22 @@ const api: WigglebuddyAPI = Object.freeze({
     ipcRenderer.invoke(SETTINGS_CHANNELS.save, settings),
   startBreakNow: (durationSeconds: number): Promise<void> =>
     ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.start, durationSeconds),
+  startUpcomingBreak: (): Promise<void> =>
+    ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.startUpcoming),
+  snoozeBreak: (): Promise<void> => ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.snooze),
+  skipBreak: (): Promise<void> => ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.skip),
   getBreakSchedule: (): Promise<BreakScheduleState> =>
     ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.read),
+  getCompanionLayout: (): Promise<CompanionLayout> =>
+    ipcRenderer.invoke(COMPANION_LAYOUT_CHANNELS.read),
+  onCompanionLayoutChanged(listener: (layout: CompanionLayout) => void) {
+    const handleLayout = (_event: Electron.IpcRendererEvent, layout: CompanionLayout): void =>
+      listener(layout)
+    ipcRenderer.on(COMPANION_LAYOUT_CHANNELS.changed, handleLayout)
+    return (): void => {
+      ipcRenderer.removeListener(COMPANION_LAYOUT_CHANNELS.changed, handleLayout)
+    }
+  },
   onBreakScheduleChanged(listener: (schedule: BreakScheduleState) => void) {
     const handleSchedule = (
       _event: Electron.IpcRendererEvent,

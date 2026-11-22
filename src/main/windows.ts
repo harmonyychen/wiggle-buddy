@@ -1,12 +1,21 @@
 import { app, BrowserWindow, screen } from 'electron'
 import { join } from 'node:path'
-import { APP_NAME, COMPANION_POINTER_CHANNEL } from '../shared/constants'
-import type { BreakState, CompanionPointerPosition } from '../shared/types'
+import {
+  APP_NAME,
+  COMPANION_LAYOUT_CHANNELS,
+  COMPANION_POINTER_CHANNEL,
+  COMPANION_PROMPT_WIDTH,
+  COMPANION_WIDTH
+} from '../shared/constants'
+import type { BreakState, CompanionLayout, CompanionPointerPosition } from '../shared/types'
 
 let companionWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
 let companionVisible = true
 let presentedBreak: BreakState | null = null
+let upcomingBreakVisible = false
+let companionLayout: CompanionLayout = { offsetX: 0, windowWidth: COMPANION_WIDTH }
+let promptCollapseTimeout: NodeJS.Timeout | undefined
 const breakOverlays = new Map<number, BrowserWindow>()
 let escapeBreakHandler: (() => void) | undefined
 
@@ -22,10 +31,44 @@ export function getSettingsWindow(): BrowserWindow | null {
   return settingsWindow
 }
 
+export function getCompanionLayout(): CompanionLayout {
+  return { ...companionLayout }
+}
+
+function resizeCompanionForPrompt(expanded: boolean): void {
+  const window = companionWindow
+  if (!window || window.isDestroyed()) return
+  const bounds = window.getBounds()
+  const petX = bounds.x + companionLayout.offsetX
+  const area = screen.getDisplayMatching({ ...bounds, x: petX, width: COMPANION_WIDTH }).workArea
+  const width = expanded ? Math.min(COMPANION_PROMPT_WIDTH, area.width) : COMPANION_WIDTH
+  const desiredX = petX - (width - COMPANION_WIDTH) / 2
+  const x = Math.round(Math.max(area.x, Math.min(desiredX, area.x + area.width - width)))
+  window.setBounds({ ...bounds, x, width })
+  const actual = window.getBounds()
+  companionLayout = { offsetX: petX - actual.x, windowWidth: actual.width }
+  window.webContents.send(COMPANION_LAYOUT_CHANNELS.changed, getCompanionLayout())
+  if (settingsWindow && !settingsWindow.isDestroyed() && settingsWindow.isVisible()) {
+    positionSettingsWindow(window, settingsWindow)
+  }
+}
+
+export function setUpcomingBreakVisible(visible: boolean): void {
+  if (upcomingBreakVisible === visible) return
+  upcomingBreakVisible = visible
+  clearTimeout(promptCollapseTimeout)
+  if (visible) resizeCompanionForPrompt(true)
+  else {
+    // Keep native space until the CSS bar has finished contracting.
+    promptCollapseTimeout = setTimeout(() => resizeCompanionForPrompt(false), 350)
+  }
+  setCompanionVisibility(companionVisible)
+}
+
 export function setCompanionVisibility(visible: boolean): void {
   companionVisible = visible
   if (!companionWindow || companionWindow.isDestroyed()) return
-  if (visible || presentedBreak) companionWindow.showInactive()
+  if (visible || presentedBreak || upcomingBreakVisible) companionWindow.showInactive()
   else companionWindow.hide()
 }
 
@@ -69,7 +112,7 @@ async function loadRenderer(
 export async function createCompanionWindow(visible = true): Promise<BrowserWindow> {
   companionVisible = visible
   const { workArea } = screen.getPrimaryDisplay()
-  const width = 180
+  const width = COMPANION_WIDTH
   // Reserve enough transparent space for the expanded bar without resizing.
   const height = 184
   const margin = 24
@@ -98,7 +141,9 @@ export async function createCompanionWindow(visible = true): Promise<BrowserWind
     }
   })
   companionWindow = window
+  companionLayout = { offsetX: 0, windowWidth: width }
   window.once('closed', () => {
+    clearTimeout(promptCollapseTimeout)
     companionWindow = null
     if (presentedBreak) escapeBreakHandler?.()
     if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.close()
@@ -110,7 +155,7 @@ export async function createCompanionWindow(visible = true): Promise<BrowserWind
 
   // Appear without taking keyboard focus from the app the user is working in.
   window.once('ready-to-show', () => {
-    if (companionVisible || presentedBreak) window.showInactive()
+    if (companionVisible || presentedBreak || upcomingBreakVisible) window.showInactive()
   })
   secureWindow(window)
 
@@ -138,7 +183,8 @@ export async function createCompanionWindow(visible = true): Promise<BrowserWind
 }
 
 function positionSettingsWindow(pet: BrowserWindow, popup: BrowserWindow): void {
-  const bounds = pet.getBounds()
+  const actual = pet.getBounds()
+  const bounds = { ...actual, x: actual.x + companionLayout.offsetX, width: COMPANION_WIDTH }
   const area = screen.getDisplayMatching(bounds).workArea
   const width = Math.min(336, area.width - 16)
   const height = Math.min(736, area.height - 16)
