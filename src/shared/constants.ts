@@ -3,11 +3,13 @@ import type { AppSettings } from './types'
 export const APP_NAME = 'wigglebuddy'
 export const COMPANION_POINTER_CHANNEL = 'companion:pointer-position'
 export const COMPANION_LAYOUT_CHANNELS = {
-  read: 'companion:layout',
-  changed: 'companion:layout-changed'
+  read: 'companion:layout'
 } as const
+export const COMPANION_INTERACTIVE_CHANNEL = 'companion:set-interactive'
 export const COMPANION_WIDTH = 180
+export const COMPANION_HEIGHT = 184
 export const COMPANION_PROMPT_WIDTH = 296
+export const COMPANION_SPRITE_HEADROOM = 64
 export const SETTINGS_CHANNELS = {
   open: 'settings:open',
   read: 'settings:read',

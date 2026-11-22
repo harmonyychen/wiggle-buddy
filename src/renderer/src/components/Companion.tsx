@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Settings, TimerReset } from 'lucide-react'
-import { COMPANION_WIDTH } from '../../../shared/constants'
+import { COMPANION_SPRITE_HEADROOM, COMPANION_WIDTH } from '../../../shared/constants'
 import type { BreakScheduleState, CompanionLayout } from '../../../shared/types'
-import restingAnimation from '../assets/panda-sleep-natural-1536x1872.png'
-import restingImage from '../assets/default-panda.png'
+import PandaSprite, { type PandaSpriteHandle } from './PandaSprite'
 
 export default function Companion(): React.JSX.Element {
-  const [animationFailed, setAnimationFailed] = useState(false)
   const [controlsExpanded, setControlsExpanded] = useState(false)
   const [timerOpen, setTimerOpen] = useState(false)
   const [schedule, setSchedule] = useState<BreakScheduleState | null>(null)
@@ -16,9 +14,12 @@ export default function Companion(): React.JSX.Element {
   const [breakActionPending, setBreakActionPending] = useState(false)
   const [layout, setLayout] = useState<CompanionLayout>({
     offsetX: 0,
+    offsetY: COMPANION_SPRITE_HEADROOM,
     windowWidth: COMPANION_WIDTH
   })
-  const spriteRef = useRef<HTMLPictureElement>(null)
+  const spriteRef = useRef<PandaSpriteHandle>(null)
+  const barRef = useRef<HTMLDivElement>(null)
+  const inputCaptured = useRef(false)
   const controlsRef = useRef<HTMLDivElement>(null)
   const pointerInside = useRef(false)
   const collapseTimeout = useRef<number | undefined>(undefined)
@@ -37,7 +38,6 @@ export default function Companion(): React.JSX.Element {
     const receiveLayout = (next: CompanionLayout): void => {
       if (active) setLayout(next)
     }
-    const unsubscribeLayout = window.wigglebuddy.onCompanionLayoutChanged(receiveLayout)
     void window.wigglebuddy.getCompanionLayout().then(receiveLayout, () => {
       if (active)
         setControlsError('Companion controls could not be loaded. Please restart the app.')
@@ -49,7 +49,6 @@ export default function Companion(): React.JSX.Element {
     return () => {
       active = false
       unsubscribe()
-      unsubscribeLayout()
       window.clearInterval(clock)
     }
   }, [])
@@ -72,18 +71,21 @@ export default function Companion(): React.JSX.Element {
   useEffect(
     () =>
       window.wigglebuddy.onCompanionPointerPosition((position) => {
+        const bounds = barRef.current?.getBoundingClientRect()
         const inside =
           position !== null &&
-          [spriteRef.current, controlsRef.current].some((element) => {
-            if (!element) return false
-            const bounds = element.getBoundingClientRect()
-            return (
+          (!!spriteRef.current?.hitTest(position.x, position.y) ||
+            (!!bounds &&
               position.x >= bounds.left &&
               position.x < bounds.right &&
               position.y >= bounds.top &&
-              position.y < bounds.bottom
-            )
+              position.y < bounds.bottom))
+        if (inside !== inputCaptured.current) {
+          inputCaptured.current = inside
+          void window.wigglebuddy.setCompanionInteractive(inside).catch(() => {
+            setControlsError('Companion input could not be updated. Please restart the app.')
           })
+        }
 
         if (inside === pointerInside.current) return
         pointerInside.current = inside
@@ -143,25 +145,19 @@ export default function Companion(): React.JSX.Element {
         style={
           {
             width: COMPANION_WIDTH,
-            transform: `translateX(${layout.offsetX}px)`,
+            transform: `translate(${layout.offsetX}px, ${layout.offsetY}px)`,
             '--prompt-center': `${layout.windowWidth / 2 - layout.offsetX}px`
           } as CSSProperties
         }
       >
-        <picture
+        <PandaSprite
           ref={spriteRef}
-          className="companion-sprite"
-          data-static={animationFailed || undefined}
-        >
-          <source media="(prefers-reduced-motion: reduce)" srcSet={restingImage} />
-          <img
-            className="companion-image"
-            src={animationFailed ? restingImage : restingAnimation}
-            alt="Resting panda. Drag to move wigglebuddy."
-            draggable={false}
-            onError={() => setAnimationFailed(true)}
-          />
-        </picture>
+          mode={breakActive ? 'break' : breakUpcoming ? 'upcoming' : 'resting'}
+          cycle={
+            schedule?.activeBreak?.endsAt ??
+            (breakUpcoming ? (schedule?.nextBreakAt ?? null) : null)
+          }
+        />
         <div
           ref={controlsRef}
           className="companion-controls"
@@ -174,7 +170,7 @@ export default function Companion(): React.JSX.Element {
           onFocus={expandControls}
           onBlur={scheduleCollapse}
         >
-          <div className="companion-bar">
+          <div ref={barRef} className="companion-bar">
             <div className="companion-toolbar" aria-hidden={!expanded || breakUpcoming}>
               <button
                 type="button"
@@ -239,10 +235,18 @@ export default function Companion(): React.JSX.Element {
               aria-label="Upcoming break"
               aria-hidden={!breakUpcoming}
             >
-              <span className="companion-prompt-icon" role="img" aria-label={countdownLabel}>
+              <span className="companion-prompt-icon" aria-hidden="true">
                 <TimerReset size={20} strokeWidth={1.6} aria-hidden="true" />
               </span>
               <span className="companion-bar-divider" aria-hidden="true" />
+              <output
+                className="companion-prompt-countdown"
+                role="timer"
+                aria-label={countdownLabel}
+                aria-live="off"
+              >
+                {breakUpcoming ? countdownText : ''}
+              </output>
               <button
                 type="button"
                 className="companion-prompt-start"

@@ -2,6 +2,7 @@ import { app, ipcMain, session, type BrowserWindow, type IpcMainInvokeEvent } fr
 import {
   APP_NAME,
   BREAK_SCHEDULE_CHANNELS,
+  COMPANION_INTERACTIVE_CHANNEL,
   COMPANION_LAYOUT_CHANNELS,
   SETTINGS_CHANNELS
 } from '../shared/constants'
@@ -16,6 +17,7 @@ import {
   openSettingsWindow,
   presentBreak,
   setCompanionVisibility,
+  setCompanionInteractive,
   setUpcomingBreakVisible,
   watchBreakDisplays
 } from './windows'
@@ -76,6 +78,11 @@ app.whenReady().then(async () => {
   ipcMain.handle(COMPANION_LAYOUT_CHANNELS.read, (event) => {
     assertSender(event, getCompanionWindow())
     return getCompanionLayout()
+  })
+  ipcMain.handle(COMPANION_INTERACTIVE_CHANNEL, (event, interactive: unknown) => {
+    assertSender(event, getCompanionWindow())
+    if (typeof interactive !== 'boolean') throw new Error('Invalid companion input state.')
+    setCompanionInteractive(interactive)
   })
   ipcMain.handle(BREAK_SCHEDULE_CHANNELS.startUpcoming, async (event) => {
     assertSender(event, getCompanionWindow())

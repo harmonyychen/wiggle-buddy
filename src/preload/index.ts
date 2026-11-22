@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import {
   APP_NAME,
   BREAK_SCHEDULE_CHANNELS,
+  COMPANION_INTERACTIVE_CHANNEL,
   COMPANION_LAYOUT_CHANNELS,
   COMPANION_POINTER_CHANNEL,
   SETTINGS_CHANNELS
@@ -31,14 +32,8 @@ const api: WigglebuddyAPI = Object.freeze({
     ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.read),
   getCompanionLayout: (): Promise<CompanionLayout> =>
     ipcRenderer.invoke(COMPANION_LAYOUT_CHANNELS.read),
-  onCompanionLayoutChanged(listener: (layout: CompanionLayout) => void) {
-    const handleLayout = (_event: Electron.IpcRendererEvent, layout: CompanionLayout): void =>
-      listener(layout)
-    ipcRenderer.on(COMPANION_LAYOUT_CHANNELS.changed, handleLayout)
-    return (): void => {
-      ipcRenderer.removeListener(COMPANION_LAYOUT_CHANNELS.changed, handleLayout)
-    }
-  },
+  setCompanionInteractive: (interactive: boolean): Promise<void> =>
+    ipcRenderer.invoke(COMPANION_INTERACTIVE_CHANNEL, interactive),
   onBreakScheduleChanged(listener: (schedule: BreakScheduleState) => void) {
     const handleSchedule = (
       _event: Electron.IpcRendererEvent,
