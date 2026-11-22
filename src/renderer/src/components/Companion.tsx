@@ -95,11 +95,12 @@ export default function Companion(): React.JSX.Element {
     [expandControls, scheduleCollapse]
   )
 
-  const breakActive = !!schedule?.activeBreak
+  const breakEndsAt = schedule?.activeBreak?.endsAt
+  const breakActive = breakEndsAt !== undefined
   const breakUpcoming = !!schedule?.breakUpcoming
   const expanded = controlsExpanded || breakActive || breakUpcoming
   const showCountdown = !breakUpcoming && (timerOpen || breakActive)
-  const deadline = schedule?.activeBreak?.endsAt ?? schedule?.nextBreakAt
+  const deadline = breakEndsAt ?? schedule?.nextBreakAt
   const remainingSeconds = deadline ? Math.max(0, Math.ceil((deadline - clockNow) / 1000)) : 0
   const countdownText = countdownFailed
     ? 'Unavailable'
@@ -118,14 +119,12 @@ export default function Companion(): React.JSX.Element {
         ? 'Breaks are paused'
         : `Next break in ${countdownText}`
 
-  async function handleBreakAction(action: 'start' | 'snooze' | 'skip'): Promise<void> {
-    if (!breakUpcoming || breakActionPending) return
+  async function handleBreakAction(action: () => Promise<void>): Promise<void> {
+    if (breakActionPending) return
     setBreakActionPending(true)
     setControlsError('')
     try {
-      if (action === 'start') await window.wigglebuddy.startUpcomingBreak()
-      else if (action === 'snooze') await window.wigglebuddy.snoozeBreak()
-      else await window.wigglebuddy.skipBreak()
+      await action()
       setControlsExpanded(false)
     } catch {
       setControlsError('The break action could not be completed. Please try again.')
@@ -153,17 +152,14 @@ export default function Companion(): React.JSX.Element {
         <PandaSprite
           ref={spriteRef}
           mode={breakActive ? 'break' : breakUpcoming ? 'upcoming' : 'resting'}
-          cycle={
-            schedule?.activeBreak?.endsAt ??
-            (breakUpcoming ? (schedule?.nextBreakAt ?? null) : null)
-          }
+          cycle={breakEndsAt ?? (breakUpcoming ? (schedule?.nextBreakAt ?? null) : null)}
         />
         <div
           ref={controlsRef}
           className="companion-controls"
           role="group"
           aria-label="Companion controls"
-          tabIndex={breakUpcoming ? -1 : 0}
+          tabIndex={breakUpcoming || breakActive ? -1 : 0}
           data-expanded={expanded}
           data-timer-open={showCountdown}
           data-upcoming={breakUpcoming}
@@ -213,21 +209,37 @@ export default function Companion(): React.JSX.Element {
                 </output>
                 <span className="companion-bar-divider" aria-hidden="true" />
               </div>
-              <button
-                type="button"
-                aria-label="Settings"
-                title={breakActive ? undefined : 'Settings'}
-                disabled={breakActive || breakUpcoming}
-                tabIndex={expanded && !breakUpcoming ? 0 : -1}
-                onClick={() => {
-                  setControlsError('')
-                  void window.wigglebuddy.openSettings().catch(() => {
-                    setControlsError('Settings could not be opened. Please try again.')
-                  })
-                }}
-              >
-                <Settings size={20} strokeWidth={1.6} aria-hidden="true" />
-              </button>
+              {breakActive ? (
+                <button
+                  key="quit-break"
+                  type="button"
+                  aria-label="Quit break"
+                  title="End this break early"
+                  disabled={breakActionPending}
+                  onClick={() =>
+                    void handleBreakAction(() => window.wigglebuddy.finishBreak(breakEndsAt))
+                  }
+                >
+                  <span className="companion-quit-label">Quit</span>
+                </button>
+              ) : (
+                <button
+                  key="settings"
+                  type="button"
+                  aria-label="Settings"
+                  title="Settings"
+                  disabled={breakUpcoming}
+                  tabIndex={expanded && !breakUpcoming ? 0 : -1}
+                  onClick={() => {
+                    setControlsError('')
+                    void window.wigglebuddy.openSettings().catch(() => {
+                      setControlsError('Settings could not be opened. Please try again.')
+                    })
+                  }}
+                >
+                  <Settings size={20} strokeWidth={1.6} aria-hidden="true" />
+                </button>
+              )}
             </div>
             <div
               className="companion-prompt-toolbar"
@@ -251,21 +263,21 @@ export default function Companion(): React.JSX.Element {
                 type="button"
                 className="companion-prompt-start"
                 disabled={!breakUpcoming || breakActionPending}
-                onClick={() => void handleBreakAction('start')}
+                onClick={() => void handleBreakAction(window.wigglebuddy.startUpcomingBreak)}
               >
                 Start Now
               </button>
               <button
                 type="button"
                 disabled={!breakUpcoming || breakActionPending}
-                onClick={() => void handleBreakAction('snooze')}
+                onClick={() => void handleBreakAction(window.wigglebuddy.snoozeBreak)}
               >
                 Snooze
               </button>
               <button
                 type="button"
                 disabled={!breakUpcoming || breakActionPending}
-                onClick={() => void handleBreakAction('skip')}
+                onClick={() => void handleBreakAction(window.wigglebuddy.skipBreak)}
               >
                 Skip
               </button>

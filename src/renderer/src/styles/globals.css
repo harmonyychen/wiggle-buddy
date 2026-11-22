@@ -244,6 +244,12 @@ body {
   pointer-events: none;
 }
 
+.companion-quit-label {
+  position: relative;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .companion-toolbar button:hover,
 .companion-toolbar button:focus-visible {
   color: #303b2c;

@@ -26,6 +26,8 @@ const api: WigglebuddyAPI = Object.freeze({
     ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.start, durationSeconds),
   startUpcomingBreak: (): Promise<void> =>
     ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.startUpcoming),
+  finishBreak: (endsAt: number): Promise<void> =>
+    ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.finish, endsAt),
   snoozeBreak: (): Promise<void> => ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.snooze),
   skipBreak: (): Promise<void> => ipcRenderer.invoke(BREAK_SCHEDULE_CHANNELS.skip),
   getBreakSchedule: (): Promise<BreakScheduleState> =>

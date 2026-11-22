@@ -1,4 +1,4 @@
-import { app, ipcMain, session, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
+import { app, ipcMain, session, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import {
   APP_NAME,
   BREAK_SCHEDULE_CHANNELS,
@@ -54,6 +54,7 @@ app.whenReady().then(async () => {
     if (key === lastState) return
     lastState = key
     setUpcomingBreakVisible(state.breakUpcoming)
+    if (state.breakUpcoming && store.get('soundEnabled')) shell.beep()
     getCompanionWindow()?.webContents.send(BREAK_SCHEDULE_CHANNELS.changed, state)
     const presentation = JSON.stringify(state.activeBreak)
     if (presentation === lastPresentation) return
@@ -69,6 +70,16 @@ app.whenReady().then(async () => {
     }
   }
 
+  function finishBreak(): Promise<void> {
+    scheduler.finishBreak()
+    return publishSchedule()
+  }
+
+  ipcMain.handle(BREAK_SCHEDULE_CHANNELS.finish, (event, endsAt: unknown) => {
+    assertSender(event, getCompanionWindow())
+    if (typeof endsAt !== 'number') throw new Error('Invalid break deadline.')
+    if (scheduler.getState().activeBreak?.endsAt === endsAt) return finishBreak()
+  })
   ipcMain.handle(BREAK_SCHEDULE_CHANNELS.read, (event) => {
     assertSender(event, getCompanionWindow())
     scheduler.tick()
@@ -128,8 +139,7 @@ app.whenReady().then(async () => {
   await createCompanionWindow(store.store.showPet)
   watchBreakDisplays()
   onBreakEscape(() => {
-    scheduler.finishBreak()
-    void publishSchedule().catch(console.error)
+    void finishBreak().catch(console.error)
   })
   await publishSchedule()
   if (!store.store.showPet) await openSettingsWindow()

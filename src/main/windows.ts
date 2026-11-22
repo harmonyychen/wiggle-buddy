@@ -40,7 +40,7 @@ export function setCompanionInteractive(interactive: boolean): void {
   if (!companionWindow || companionWindow.isDestroyed() || companionInteractive === interactive)
     return
   companionInteractive = interactive
-  companionWindow.setIgnoreMouseEvents(!interactive, { forward: true })
+  if (!presentedBreak) companionWindow.setIgnoreMouseEvents(!interactive, { forward: true })
 }
 
 export function setUpcomingBreakVisible(visible: boolean): void {
@@ -69,13 +69,20 @@ function secureWindow(window: BrowserWindow): void {
       !input.shift &&
       input.key.toLowerCase() === 'q'
     if (quitShortcut) return
+    const plainKey = !input.meta && !input.control && !input.alt
+    if (window === companionWindow && plainKey && ['Tab', 'Enter', ' '].includes(input.key)) return
     event.preventDefault()
+    if (input.type === 'keyDown' && plainKey && input.key === 'Tab' && companionWindow) {
+      // The overlay initially owns focus. Tab moves to the break bar's only control.
+      companionWindow.focus()
+      companionWindow.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Tab' })
+    }
     if (input.type === 'keyDown' && input.key === 'Escape') {
       escapeBreakHandler?.()
     }
   })
   window.webContents.on('before-mouse-event', (event) => {
-    if (presentedBreak) {
+    if (presentedBreak && window !== companionWindow) {
       event.preventDefault()
     }
   })
@@ -137,6 +144,7 @@ export async function createCompanionWindow(visible = true): Promise<BrowserWind
     minimizable: false,
     fullscreenable: false,
     alwaysOnTop: true,
+    acceptFirstMouse: true,
     show: false,
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
@@ -360,6 +368,7 @@ export async function presentBreak(state: BreakState | null): Promise<void> {
     breakOverlays.clear()
     if (companionWindow && !companionWindow.isDestroyed()) {
       companionWindow.setMovable(true)
+      companionWindow.setIgnoreMouseEvents(!companionInteractive, { forward: true })
       companionWindow.setAlwaysOnTop(true, 'floating')
       setCompanionVisibility(companionVisible)
     }
@@ -370,6 +379,8 @@ export async function presentBreak(state: BreakState | null): Promise<void> {
     settingsWindow?.hide()
   }
   companionWindow?.setMovable(false)
+  // The overlays already intercept the desktop; Quit must accept even a quick first click.
+  companionWindow?.setIgnoreMouseEvents(false)
   raiseCompanion()
   await reconcileBreakOverlays()
   if (!previous && presentedBreak === state) {

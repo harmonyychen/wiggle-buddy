@@ -1,0 +1,17 @@
+appId: io.github.harmonyychen.wigglebuddy
+productName: wigglebuddy
+artifactName: ${name}-${version}-${arch}.${ext}
+files:
+  - out/**/*
+forceCodeSigning: true
+mac:
+  type: distribution
+  category: public.app-category.healthcare-fitness
+  icon: build/panda.icns
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # The release script submits the finished disk image, including the signed app.
+  notarize: false
+dmg:
+  sign: true
+  writeUpdateInfo: false

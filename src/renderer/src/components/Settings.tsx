@@ -248,8 +248,7 @@ export default function Settings(): React.JSX.Element {
                   label="Sound notifications"
                   checked={draft.soundEnabled}
                   onChange={(value) => change('soundEnabled', value)}
-                  disabled
-                  title="Sound notifications are coming soon."
+                  title="Play the system alert sound 10 seconds before a scheduled break."
                 />
               </div>
               <div className="settings-rule">

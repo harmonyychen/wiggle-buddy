@@ -16,6 +16,7 @@ export interface WigglebuddyAPI {
   saveSettings(settings: AppSettings): Promise<void>
   startBreakNow(durationSeconds: number): Promise<void>
   startUpcomingBreak(): Promise<void>
+  finishBreak(endsAt: number): Promise<void>
   snoozeBreak(): Promise<void>
   skipBreak(): Promise<void>
   getBreakSchedule(): Promise<BreakScheduleState>

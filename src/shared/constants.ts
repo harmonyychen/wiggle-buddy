@@ -18,6 +18,7 @@ export const SETTINGS_CHANNELS = {
 export const BREAK_SCHEDULE_CHANNELS = {
   start: 'break-schedule:start',
   startUpcoming: 'break-schedule:start-upcoming',
+  finish: 'break-schedule:finish',
   snooze: 'break-schedule:snooze',
   skip: 'break-schedule:skip',
   read: 'break-schedule:read',

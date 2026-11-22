@@ -1,10 +1,10 @@
 {
   "name": "wigglebuddy",
   "version": "0.1.0",
-  "description": "A macOS desktop companion scaffold built with Electron, React, and TypeScript.",
+  "description": "A desktop panda that reminds you to take screen breaks and stretches with you.",
   "main": "./out/main/index.js",
   "author": "harmonyychen",
-  "homepage": "https://github.com/harmonyychen/wiggle-giggle",
+  "homepage": "https://github.com/harmonyychen/wiggle-buddy",
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -15,6 +15,8 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
+    "dist:mac": "npm run build && electron-builder --mac dmg --arm64 --publish never -c.directories.output=dist/local -c.mac.identity=- -c.mac.hardenedRuntime=false -c.dmg.sign=false",
+    "release:mac": "sh scripts/release-mac.sh",
     "postinstall": "install-electron"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "eslint": "^10.15.0",
     "eslint-plugin-react-hooks": "^7.1.1",
