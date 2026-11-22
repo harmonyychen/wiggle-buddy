@@ -20,5 +20,5 @@ If macOS can’t verify the developer on first launch and you trust the download
 
 ## How to use
 
-Hover over the panda and click the settings icon to set how often you take breaks and how long they last. During a break, click **Quit** beside the countdown or press **Esc** to return to work.
+Hover over the panda and click the settings icon to set how often you take breaks and how long they last. During a break, mouse functions are frozen and the screen dims. Click **Quit** beside the countdown or press **Esc** to return to work.
 
