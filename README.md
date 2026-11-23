@@ -1,6 +1,6 @@
-# wigglebuddy
+https://github.com/user-attachments/assets/d06036b7-f8f8-4f4e-818b-fbf9475fe72e
 
-https://github.com/user-attachments/assets/5c1d1641-60eb-4b51-9dc1-e2f5f1650392
+# wigglebuddy
 
 A desktop panda that reminds you to get up and stretch, and stretches with you.
 
