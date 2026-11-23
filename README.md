@@ -1,6 +1,6 @@
 # wigglebuddy
 
-<img width="350" height="269" alt="Screenshot 2026-11-22 at 2 20 51 PM" src="https://github.com/user-attachments/assets/b1f53f98-cfeb-42b3-ab30-6a8335593a48" />
+https://github.com/user-attachments/assets/5c1d1641-60eb-4b51-9dc1-e2f5f1650392
 
 A desktop panda that reminds you to get up and stretch, and stretches with you.
 
